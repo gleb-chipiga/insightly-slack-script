@@ -2,9 +2,14 @@
 Script, launched periodically, will fetch new and changed opportunities from insightly and send message to slack
 
 ## Quickstart
+
+Before the start you should install required external packages using pip command-line tool:
+   
+    $ pip install requirements.txt
+    
 1. Launch the script first time, it will copy `config.py.example` to `config.py`:
 
-        > ./insightly_notify.py
+        $ ./insightly_notify.py
     
 2. Edit `config.py`.
     
