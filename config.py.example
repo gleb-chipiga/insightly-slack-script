@@ -1,0 +1,12 @@
+# INSIGHTLY_API_KEY can be obtained on user settings page.
+INSIGHTLY_API_KEY = ''
+
+# SLACK_CHANNEL_URL can be obtained on the webhook config page: https://my.slack.com/services/new/incoming-webhook/
+# Format is 'https://hooks.slack.com/services/xxxxxxxx/xxxxxxxx/xxxxxxxxxxxxxxxxxxxx'
+SLACK_CHANNEL_URL = ''
+
+# SYSLOG_ADDRESS can be path to unix-socket file or a tuple: (hostname, port).
+# Right value depends on the local system syslog daemon configuration.
+# Examples:
+# SYSLOG_ADDRESS = ('localhost', 514)
+# SYSLOG_ADDRESS = '/run/systemd/journal/syslog'
