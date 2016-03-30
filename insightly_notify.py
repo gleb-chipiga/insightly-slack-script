@@ -183,15 +183,25 @@ def notify_changed_opportunities():
 
     db['changed_opportunities_last_poll_time'] = now
 
-    # Clear list from new opportunities, we only handle changed ones here.
     for opp in copy(changed_opportunities):
         # Assign LOCAL_ID to opportunity.
         opp['LOCAL_ID'] = 'opportunity_%s' % opp['OPPORTUNITY_ID']
 
+        # Clear list from new opportunities, we only handle changed ones here.
         if opp['LOCAL_ID'] not in db:
             # This is new opportunitiy, add to the local database and remove from changed list.
             db[opp['LOCAL_ID']] = opp
             changed_opportunities.remove(opp)
+        else:
+            local_opp = db[opp['LOCAL_ID']]
+
+            # Make list of changed fields.
+            changed_fields = [x for x in opp if opp.get(x) != local_opp.get(x)]
+
+            if not changed_fields:
+                # This opportunity is not really changed. Insightly seems to cache the response list and
+                # we can get false positives. Remove this opportunity from changed list.
+                changed_opportunities.remove(opp)
 
     logging.info('%d changed opportunities found.' % len(changed_opportunities))
 
@@ -229,7 +239,7 @@ def notify_changed_opportunities():
 
 def main():
     configure()
-    notify_new_opportunities()
+    #notify_new_opportunities()
     notify_changed_opportunities()
 
 
