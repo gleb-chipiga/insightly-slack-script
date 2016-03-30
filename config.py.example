@@ -5,8 +5,7 @@ INSIGHTLY_API_KEY = ''
 # Format is 'https://hooks.slack.com/services/xxxxxxxx/xxxxxxxx/xxxxxxxxxxxxxxxxxxxx'
 SLACK_CHANNEL_URL = ''
 
-# SYSLOG_ADDRESS can be path to unix-socket file or a tuple: (hostname, port).
-# Right value depends on the local system syslog daemon configuration.
-# Examples:
-# SYSLOG_ADDRESS = ('localhost', 514)
-# SYSLOG_ADDRESS = '/run/systemd/journal/syslog'
+
+LOG_FILE = '/var/log/insightly_notify.log'
+
+LOG_LEVEL = 'INFO'

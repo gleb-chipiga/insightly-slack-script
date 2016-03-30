@@ -32,4 +32,7 @@ All config variables should be put in the `config.py` file. That file will be cr
 
 *SLACK_CHANNEL_URL* - string, required. The url can be obtained at slack incoming webhooks configuration page: https://my.slack.com/services/new/incoming-webhook/
 
-*SYSLOG_ADDRESS* - string or tuple, optional. This setting will be used to send log messages to syslog daemon. Depending on the local syslog daemon configuration, it should be set to the address it is listening to. It can be string, representing local unix-socket file path, or tuple (hostname, port)
+*LOG_FILE* - string, optional. Path to log file. By default it will be '/var/log/insightly_notify.log'
+
+*LOG_LEVEL* - string, optional. Adjusts verbosity of log messages. By default it will be 'INFO'
+

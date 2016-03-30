@@ -6,11 +6,12 @@ from __future__ import print_function
 import json
 import logging
 import logging.config
+import os
 import re
 import shelve
 
 from datetime import datetime
-from os.path import exists
+from os.path import abspath, dirname, exists, join
 from shutil import copyfile
 from textwrap import dedent
 
@@ -28,28 +29,51 @@ def configure():
     Apply configuration from config.py
     """
 
-    if hasattr(config, 'SYSLOG_ADDRESS'):
-        SYSLOG_ADDRESS = config.SYSLOG_ADDRESS
-        print('Syslog is configured to use %s' % SYSLOG_ADDRESS)
+    if hasattr(config, 'LOG_FILE'):
+        LOG_FILE = abspath(config.LOG_FILE)
+        print('Log messages will be sent to %s' % LOG_FILE)
     else:
-        SYSLOG_ADDRESS = '/run/systemd/journal/syslog'
-        print('Syslog is configured to use %s by default. You can change SYSLOG_ADDRESS in the config.' % SYSLOG_ADDRESS)
+        LOG_FILE = '/var/log/insightly_notify.log'
+        print('Log messages will be sent to %s. You can change LOG_FILE in the config.' % LOG_FILE)
+
+    # Test write permissions in the log file directory.
+    permissons_test_path = join(dirname(LOG_FILE), 'insightly_test.log')
+    try:
+        with open(permissons_test_path, 'w+') as test_file:
+            test_file.write('test')
+        os.remove(permissons_test_path)
+    except (OSError, IOError) as e:
+        msg = '''\
+            Write to the "%s/" directory failed. Please check permissions or change LOG_FILE config.
+            Original error was: %s.''' % (dirname(LOG_FILE), e)
+        raise Exception(dedent(msg))
+
+    LOG_LEVEL = getattr(config, 'LOG_LEVEL', 'INFO')
 
     logging.config.dictConfig({
         'version': 1,
+        'formatters': {
+            'verbose': {
+                'format': '%(levelname)s %(asctime)s %(module)s.py: %(message)s',
+                'datefmt': '<%Y-%m-%d %H:%M:%S>'
+            },
+            'simple': {'format': '%(levelname)s %(module)s.py: %(message)s'},
+        },
         'handlers': {
-            'syslog': {
-                'level': 'INFO',
-                'class': 'logging.handlers.SysLogHandler',
-                'address': SYSLOG_ADDRESS
+            'log_file': {
+                'level': LOG_LEVEL,
+                'class': 'logging.handlers.WatchedFileHandler',
+                'filename': LOG_FILE,
+                'formatter': 'verbose'
             },
             'console': {
-                'level': 'INFO',
+                'level': LOG_LEVEL,
                 'class': 'logging.StreamHandler',
+                'formatter': 'simple'
             },
         },
         'loggers': {
-            '': {'handlers': ['syslog', 'console'], 'level': 'INFO'},
+            '': {'handlers': ['log_file', 'console'], 'level': LOG_LEVEL},
         }
     })
 
@@ -80,7 +104,7 @@ def main():
     # Persistent file storage will keep track of last poll time.
     db = shelve.open('db.shelve')
 
-    # Auth user should be the api key, password is empty.
+    # Tuple (user, password) for request authentication. User should be the api key, password is empty.
     insightly_auth = (config.INSIGHTLY_API_KEY, '')
 
     now = datetime.utcnow()
@@ -102,6 +126,8 @@ def main():
     db['last_poll'] = now
 
     new_opportunities = json.loads(opp_response.content)
+
+    logging.info('%d new opportunities found.' % len(new_opportunities))
 
     for opp in new_opportunities:
 
