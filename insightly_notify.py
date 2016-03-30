@@ -239,7 +239,7 @@ def notify_changed_opportunities():
 
 def main():
     configure()
-    #notify_new_opportunities()
+    notify_new_opportunities()
     notify_changed_opportunities()
 
 
