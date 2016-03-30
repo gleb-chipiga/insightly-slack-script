@@ -11,6 +11,7 @@ import re
 import shelve
 
 from datetime import datetime
+from copy import copy
 from os.path import abspath, dirname, exists, join
 from shutil import copyfile
 from textwrap import dedent
@@ -22,6 +23,26 @@ if not exists('config.py'):
     copyfile('config.py.example', 'config.py')
 
 import config
+
+
+def insightly_get(url, auth):
+    """ Send GET response. Raise exception if response status code is not 200. """
+    response = requests.get('https://api.insight.ly/v2.1' + url, auth=auth)
+    if response.status_code != 200:
+        err = Exception('Insightly api GET error: Http status %s. Url:\n%s' % (response.status_code, url))
+        logging.critical(err)
+        raise err
+    return json.loads(response.content)
+
+
+def slack_post(url):
+    """ Send POST response. Raise exception if response status code is not 200. """
+    response = requests.post(url)
+    if response.status_code != 200:
+        err = Exception('Slack api POST error: Http status %s. Url:\n%s' % (response.status_code, url))
+        logging.critical(err)
+        raise err
+    return response
 
 
 def configure():
@@ -95,12 +116,10 @@ def configure():
         raise err
 
 
-def main():
+def notify_new_opportunities():
     """
     Fetch new opportunities using insightly api. Send slack message on each new opportunity.
     """
-    configure()
-
     # Persistent file storage will keep track of last poll time.
     db = shelve.open('db.shelve')
 
@@ -111,21 +130,14 @@ def main():
 
     if 'last_poll' not in db:
         db['last_poll'] = now
-        logging.info('*** insightly_notify is launched first time, previous events are ignored.')
+        logging.info('*** insightly_notify is launched first time, previously created opportunities are ignored.')
 
     last_poll = db['last_poll'].strftime('%Y-%m-%dT%H:%M:%S')
 
-    url = "https://api.insight.ly/v2.1/opportunities?$filter=DATE_CREATED_UTC%20gt%20DateTime'{from_date}'"
-    opp_response = requests.get(url.format(from_date=last_poll), auth=insightly_auth)
-
-    if opp_response.status_code != 200:
-        err = Exception('Insightly api GET error: Http status %s. Url:\n%s' % (opp_response.status_code, opp_response.url))
-        logging.critical(err)
-        raise err
+    url = "/opportunities?$filter=DATE_CREATED_UTC%20gt%20DateTime'{from_date}'".format(from_date=last_poll)
+    new_opportunities = insightly_get(url, insightly_auth)
 
     db['last_poll'] = now
-
-    new_opportunities = json.loads(opp_response.content)
 
     logging.info('%d new opportunities found.' % len(new_opportunities))
 
@@ -133,13 +145,8 @@ def main():
 
         # Fetch responsible user info.
         uid = opp['RESPONSIBLE_USER_ID']
-        u_response = requests.get("https://api.insight.ly/v2.1/users/%s" % uid, auth=insightly_auth)
-        if u_response.status_code != 200:
-            err = Exception('Insightly api GET error: Http status %s. Url:\n%s' % (u_response.status_code, u_response.url))
-            logging.critical(err)
-            raise err
+        userdata = insightly_get("/users/%s" % uid, insightly_auth)
 
-        userdata = json.loads(u_response.content)
         opp['RESPONSIBLE_USER'] = "{FIRST_NAME} {LAST_NAME} {EMAIL_ADDRESS}".format(**userdata)
 
         # The message template to send to slack.
@@ -152,11 +159,77 @@ def main():
             .format(**opp)
 
         # Send message to slack.
-        slack_response = requests.post(config.SLACK_CHANNEL_URL, json={'text': dedent(message)})
-        if slack_response.status_code != 200:
-            err = Exception('Slack api POST error: Http status %s. Url:\n%s' % (slack_response.status_code, slack_response.url))
-            logging.critical(err)
-            raise err
+        slack_post(config.SLACK_CHANNEL_URL, json={'text': dedent(message)})
+
+
+def notify_changed_opportunities():
+    """
+    Fetch changed opportunities using insightly api. Send slack message on each changed opportunity.
+    """
+    db = shelve.open('db.shelve')
+
+    insightly_auth = (config.INSIGHTLY_API_KEY, '')
+
+    now = datetime.utcnow()
+
+    if 'changed_opportunities_last_poll_time' not in db:
+        db['changed_opportunities_last_poll_time'] = now
+        logging.info('*** insightly_notify is launched first time, previously changed opportunities are ignored.')
+
+    last_poll = db['changed_opportunities_last_poll_time'].strftime('%Y-%m-%dT%H:%M:%S')
+
+    url = "/opportunities?$filter=DATE_UPDATED_UTC%20gt%20DateTime'{from_date}'".format(from_date=last_poll)
+    changed_opportunities = insightly_get(url, insightly_auth)
+
+    db['changed_opportunities_last_poll_time'] = now
+
+    # Clear list from new opportunities, we only handle changed ones here.
+    for opp in copy(changed_opportunities):
+        # Assign LOCAL_ID to opportunity.
+        opp['LOCAL_ID'] = 'opportunity_%s' % opp['OPPORTUNITY_ID']
+
+        if opp['LOCAL_ID'] not in db:
+            # This is new opportunitiy, add to the local database and remove from changed list.
+            db[opp['LOCAL_ID']] = opp
+            changed_opportunities.remove(opp)
+
+    logging.info('%d changed opportunities found.' % len(changed_opportunities))
+
+    for opp in changed_opportunities:
+        local_opp = db[opp['LOCAL_ID']]
+
+        # Make list of changed fields.
+        changed_fields = [x for x in opp if opp.get(x) != local_opp.get(x)]
+
+        message = ''
+        if 'PROBABILITY' in changed_fields:
+            message += 'Probability changed to %s\n' % opp['PROBABILITY']
+        if 'BID_AMOUNT' in changed_fields:
+            message += 'Bid amount changed to %s\n' % opp['BID_AMOUNT']
+        if 'BID_CURRENCY' in changed_fields:
+            message += 'Bid currency changed to %s\n' % opp['BID_CURRENCY']
+        if 'OPPORTUNITY_STATE' in changed_fields:
+            message += 'State changed to %s\n' % opp['OPPORTUNITY_STATE']
+        if 'PIPELINE_ID' in changed_fields:
+            pipeline = insightly_get("/Pipelines/%s" % opp['PIPELINE_ID'], insightly_auth)
+            stage = insightly_get("/PipelineStages/%s" % opp['STAGE_ID'], insightly_auth)
+            message += 'Pipeline changed to %s (%s)\n' % (pipeline['PIPELINE_NAME'], stage['STAGE_NAME'])
+        elif 'STAGE_ID' in changed_fields:
+            stage = insightly_get("/PipelineStages/%s" % opp['STAGE_ID'], insightly_auth)
+            message += 'Stage changed to %s\n' % stage['STAGE_NAME']
+
+        # Send message to slack.
+        if message:
+            slack_post(config.SLACK_CHANNEL_URL, json={'text': message.strip()})
+
+        # Update local opportunity.
+        db[opp['LOCAL_ID']] = opp
+
+
+def main():
+    configure()
+    notify_new_opportunities()
+    notify_changed_opportunities()
 
 
 if __name__ == '__main__':
