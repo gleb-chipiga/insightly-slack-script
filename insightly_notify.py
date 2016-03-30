@@ -35,9 +35,9 @@ def insightly_get(url, auth):
     return json.loads(response.content)
 
 
-def slack_post(url):
+def slack_post(url, *args, **kwargs):
     """ Send POST response. Raise exception if response status code is not 200. """
-    response = requests.post(url)
+    response = requests.post(url, *args, **kwargs)
     if response.status_code != 200:
         err = Exception('Slack api POST error: Http status %s. Url:\n%s' % (response.status_code, url))
         logging.critical(err)
