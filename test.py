@@ -60,7 +60,7 @@ class ChangedOpportunitiesTestCase(TestCase):
 
         # THEN one slack message should be sent
         insightly_notify.slack_post.assert_called_once_with(
-            config.SLACK_CHANNEL_URL, json={'text': 'Bid amount changed to 2'})
+            config.SLACK_CHANNEL_URL, json={'text': 'Opportunity op2 changed:\nBid amount changed to 2'})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['BID_AMOUNT'] == 2)
@@ -79,7 +79,7 @@ class ChangedOpportunitiesTestCase(TestCase):
 
         # THEN one slack message should be sent
         insightly_notify.slack_post.assert_called_once_with(
-            config.SLACK_CHANNEL_URL, json={'text': 'Pipeline changed to New pipe (New stage)'})
+            config.SLACK_CHANNEL_URL, json={'text': 'Opportunity op2 changed:\nPipeline changed to New pipe (New stage)'})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['PIPELINE_ID'] == 222)

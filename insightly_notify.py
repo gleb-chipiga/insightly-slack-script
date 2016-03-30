@@ -220,6 +220,7 @@ def notify_changed_opportunities():
 
         # Send message to slack.
         if message:
+            message = 'Opportunity {OPPORTUNITY_NAME} changed:\n'.format(**opp) + message
             slack_post(config.SLACK_CHANNEL_URL, json={'text': message.strip()})
 
         # Update local opportunity.
