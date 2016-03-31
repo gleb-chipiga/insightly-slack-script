@@ -18,11 +18,11 @@ from textwrap import dedent
 
 import requests
 
-if not exists('config.py'):
-    print(u'*** Creating default config file config.py')
-    copyfile('config.py.example', 'config.py')
+if not exists('insightly_slack_notify_config.py'):
+    print(u'*** Creating default config file insightly_slack_notify_config.py')
+    copyfile('insightly_slack_notify_config.py.example', 'insightly_slack_notify_config.py')
 
-import config
+import insightly_slack_notify_config as config
 
 
 def insightly_get(url, auth):

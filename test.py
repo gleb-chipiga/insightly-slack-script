@@ -6,8 +6,8 @@ from unittest import TestCase
 
 from mock import Mock, patch
 
-import insightly_notify
-import config
+import insightly_slack_notify
+import insightly_slack_notify_config as config
 
 
 class ChangedOpportunitiesTestCase(TestCase):
@@ -43,8 +43,8 @@ class ChangedOpportunitiesTestCase(TestCase):
 
         self.local_db = {'opportunity_111': local_opportunity}
 
-        patch('insightly_notify.slack_post', Mock()).start()
-        patch('insightly_notify.shelve.open', lambda x: self.local_db).start()
+        patch('insightly_slack_notify.slack_post', Mock()).start()
+        patch('insightly_slack_notify.shelve.open', lambda x: self.local_db).start()
 
     def tearDown(self):
         patch.stopall()
@@ -54,14 +54,15 @@ class ChangedOpportunitiesTestCase(TestCase):
         insightly_response_chain = [
             [dict(self.local_db['opportunity_111'], BID_AMOUNT=2)],
         ]
-        patch('insightly_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
+        patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
 
         # AND notify_changed_opportunities() is called
-        insightly_notify.notify_changed_opportunities()
+        insightly_slack_notify.notify_changed_opportunities()
 
         # THEN one slack message should be sent
-        insightly_notify.slack_post.assert_called_once_with(
-            config.SLACK_CHANNEL_URL, json={'text': 'Opportunity op2 changed:\nBid amount changed to 2'})
+        insightly_slack_notify.slack_post.assert_called_once_with(
+            config.SLACK_CHANNEL_URL,
+            json={'text': 'Opportunity op2 changed:\nBid amount changed to 2'})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['BID_AMOUNT'] == 2)
@@ -73,14 +74,15 @@ class ChangedOpportunitiesTestCase(TestCase):
             {'PIPELINE_NAME': 'New pipe'},
             {'STAGE_NAME': 'New stage'}
         ]
-        patch('insightly_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
+        patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
 
         # AND notify_changed_opportunities() is called
-        insightly_notify.notify_changed_opportunities()
+        insightly_slack_notify.notify_changed_opportunities()
 
         # THEN one slack message should be sent
-        insightly_notify.slack_post.assert_called_once_with(
-            config.SLACK_CHANNEL_URL, json={'text': 'Opportunity op2 changed:\nPipeline changed to New pipe (New stage)'})
+        insightly_slack_notify.slack_post.assert_called_once_with(
+            config.SLACK_CHANNEL_URL,
+            json={'text': 'Opportunity op2 changed:\nPipeline changed to New pipe (New stage)'})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['PIPELINE_ID'] == 222)
@@ -92,14 +94,15 @@ class ChangedOpportunitiesTestCase(TestCase):
             [dict(self.local_db['opportunity_111'], CATEGORY_ID=222)],
             {'CATEGORY_NAME': 'New category'},
         ]
-        patch('insightly_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
+        patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
 
         # AND notify_changed_opportunities() is called
-        insightly_notify.notify_changed_opportunities()
+        insightly_slack_notify.notify_changed_opportunities()
 
         # THEN one slack message should be sent
-        insightly_notify.slack_post.assert_called_once_with(
-            config.SLACK_CHANNEL_URL, json={'text': 'Opportunity op2 changed:\nCategory changed to New category'})
+        insightly_slack_notify.slack_post.assert_called_once_with(
+            config.SLACK_CHANNEL_URL,
+            json={'text': 'Opportunity op2 changed:\nCategory changed to New category'})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['CATEGORY_ID'] == 222)
@@ -136,8 +139,8 @@ class NewOpportunitiesTestCase(TestCase):
             "EMAILLINKS": []}
         self.local_db = {}
 
-        patch('insightly_notify.slack_post', Mock()).start()
-        patch('insightly_notify.shelve.open', lambda x: self.local_db).start()
+        patch('insightly_slack_notify.slack_post', Mock()).start()
+        patch('insightly_slack_notify.shelve.open', lambda x: self.local_db).start()
 
     def tearDown(self):
         patch.stopall()
@@ -148,10 +151,10 @@ class NewOpportunitiesTestCase(TestCase):
             {'FIRST_NAME': 'First', 'LAST_NAME': 'Last', 'EMAIL_ADDRESS': 'email@test.com'},
             {'CATEGORY_NAME': 'New category'},
         ]
-        patch('insightly_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
+        patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
 
         # AND notify_changed_opportunities() is called
-        insightly_notify.notify_new_opportunities()
+        insightly_slack_notify.notify_new_opportunities()
 
         # THEN one slack message should be sent
         expected_message = '''\
@@ -161,5 +164,5 @@ class NewOpportunitiesTestCase(TestCase):
             Responsible user: First Last email@test.com
             Close date: 2016-03-31 00:00:00
             Description: dddddd'''
-        insightly_notify.slack_post.assert_called_once_with(
+        insightly_slack_notify.slack_post.assert_called_once_with(
             config.SLACK_CHANNEL_URL, json={'text': dedent(expected_message)})
