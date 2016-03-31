@@ -144,15 +144,18 @@ def notify_new_opportunities():
     for opp in new_opportunities:
 
         # Fetch responsible user info.
-        uid = opp['RESPONSIBLE_USER_ID']
-        userdata = insightly_get("/users/%s" % uid, insightly_auth)
-
+        userdata = insightly_get("/users/%s" % opp['RESPONSIBLE_USER_ID'], insightly_auth)
         opp['RESPONSIBLE_USER'] = "{FIRST_NAME} {LAST_NAME} {EMAIL_ADDRESS}".format(**userdata)
+
+        # Fetch category info.
+        category = insightly_get("/OpportunityCategories/%s" % opp['CATEGORY_ID'], insightly_auth)
+        opp['CATEGORY'] = category['CATEGORY_NAME']
 
         # The message template to send to slack.
         message = '''\
             New opportunity created: {OPPORTUNITY_NAME}
             Value: {BID_AMOUNT} {BID_CURRENCY}
+            Category: {CATEGORY}
             Responsible user: {RESPONSIBLE_USER}
             Close date: {FORECAST_CLOSE_DATE}
             Description: {OPPORTUNITY_DETAILS}'''\
@@ -227,6 +230,9 @@ def notify_changed_opportunities():
         elif 'STAGE_ID' in changed_fields:
             stage = insightly_get("/PipelineStages/%s" % opp['STAGE_ID'], insightly_auth)
             message += 'Stage changed to %s\n' % stage['STAGE_NAME']
+        elif 'CATEGORY_ID' in changed_fields:
+            category = insightly_get("/OpportunityCategories/%s" % opp['CATEGORY_ID'], insightly_auth)
+            message += 'Category changed to %s\n' % category['CATEGORY_NAME']
 
         # Send message to slack.
         if message:
