@@ -243,10 +243,59 @@ def notify_changed_opportunities():
         db[opp['LOCAL_ID']] = opp
 
 
+def notify_deleted_opportunities():
+    """
+    Fetch all opportunities using insightly api. Compare with local copy. Send slack message on each deleted opportunity.
+
+    NOTE: Details of the deleted opportunity can only be known from local db. These details should be periodically updated
+    using notify_changed_opportunities() function. So periodically running script should always run both functions, as
+    done in the main().
+    """
+    db = shelve.open('db.shelve')
+
+    insightly_auth = (config.INSIGHTLY_API_KEY, '')
+
+    if 'opportunities_ids' not in db:
+        db['opportunities_ids'] = set()
+
+    server_opportunities = insightly_get("/opportunities", insightly_auth)
+
+    # Store locally opportunity details which was not known previously.
+    for opp in server_opportunities:
+        opp['LOCAL_ID'] = 'opportunity_%s' % opp['OPPORTUNITY_ID']
+
+        if opp['LOCAL_ID'] not in db:
+            db[opp['LOCAL_ID']] = opp
+
+    # Determine deleted ids.
+    server_opportunities_ids = set(x['OPPORTUNITY_ID'] for x in server_opportunities)
+    deleted_opportunities_ids = db['opportunities_ids'].difference(server_opportunities_ids)
+
+    for opp_id in deleted_opportunities_ids:
+        local_id = 'opportunity_%s' % opp_id
+
+        message = '''\
+            Opportunity deleted: {OPPORTUNITY_NAME}
+            Description: {OPPORTUNITY_DETAILS}'''\
+            .format(**db[local_id])
+
+        # Send message to slack.
+        slack_post(config.SLACK_CHANNEL_URL, json={'text': dedent(message)})
+
+    # Update local list of existing opportunities ids.
+    db['opportunities_ids'] = server_opportunities_ids
+
+    # Delete not needed details of deleted opportunities.
+    for opp_id in deleted_opportunities_ids:
+        local_id = 'opportunity_%s' % opp_id
+        del db[local_id]
+
+
 def main():
     configure()
     notify_new_opportunities()
     notify_changed_opportunities()
+    notify_deleted_opportunities()
 
 
 if __name__ == '__main__':
