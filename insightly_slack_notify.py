@@ -99,19 +99,19 @@ def configure():
     })
 
     try:
-        from config import INSIGHTLY_API_KEY
-        from config import SLACK_CHANNEL_URL
+        from insightly_slack_notify_config import INSIGHTLY_API_KEY
+        from insightly_slack_notify_config import SLACK_CHANNEL_URL
     except Exception as e:
-        logging.critical('Please set required config varialble in config.py:\n%s', str(e))
+        logging.critical('Please set required config varialble in insightly_slack_notify_config.py:\n%s', str(e))
         raise
 
     if not re.match(r'\w{8}-\w{4}-\w{4}-\w{4}-\w{12}', INSIGHTLY_API_KEY):
-        err = Exception('INSIGHTLY_API_KEY has wrong format "%s", please set the right value in config.py' % INSIGHTLY_API_KEY)
+        err = Exception('INSIGHTLY_API_KEY has wrong format "%s", please set the right value in insightly_slack_notify_config.py' % INSIGHTLY_API_KEY)
         logging.critical(err)
         raise err
 
     if not re.match(r'https://hooks.slack.com/services/\w+/\w+/\w+', SLACK_CHANNEL_URL):
-        err = Exception('SLACK_CHANNEL_URL has wrong format "%s", please set the right value in config.py' % SLACK_CHANNEL_URL)
+        err = Exception('SLACK_CHANNEL_URL has wrong format "%s", please set the right value in insightly_slack_notify_config.py' % SLACK_CHANNEL_URL)
         logging.critical(err)
         raise err
 
