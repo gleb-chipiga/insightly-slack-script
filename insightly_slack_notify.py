@@ -271,6 +271,8 @@ def notify_deleted_opportunities():
     server_opportunities_ids = set(x['OPPORTUNITY_ID'] for x in server_opportunities)
     deleted_opportunities_ids = db['opportunities_ids'].difference(server_opportunities_ids)
 
+    logging.info('%d deleted opportunities found.' % len(deleted_opportunities_ids))
+
     for opp_id in deleted_opportunities_ids:
         local_id = 'opportunity_%s' % opp_id
 
