@@ -62,7 +62,10 @@ class ChangedOpportunitiesTestCase(TestCase):
         # THEN one slack message should be sent
         insightly_slack_notify.slack_post.assert_called_once_with(
             config.SLACK_CHANNEL_URL,
-            json={'text': 'Opportunity op111 changed:\nBid amount changed to 2'})
+            json={'text': dedent(
+                'Opportunity op111 changed:\n'
+                'Bid amount changed to 2\n'
+                'Url: https://googleapps.insight.ly/opportunities/details/111')})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['BID_AMOUNT'] == 2)
@@ -82,7 +85,10 @@ class ChangedOpportunitiesTestCase(TestCase):
         # THEN one slack message should be sent
         insightly_slack_notify.slack_post.assert_called_once_with(
             config.SLACK_CHANNEL_URL,
-            json={'text': 'Opportunity op111 changed:\nPipeline changed to New pipe (New stage)'})
+            json={'text': dedent(
+                'Opportunity op111 changed:\n'
+                'Pipeline changed to New pipe (New stage)\n'
+                'Url: https://googleapps.insight.ly/opportunities/details/111')})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['PIPELINE_ID'] == 222)
@@ -102,7 +108,10 @@ class ChangedOpportunitiesTestCase(TestCase):
         # THEN one slack message should be sent
         insightly_slack_notify.slack_post.assert_called_once_with(
             config.SLACK_CHANNEL_URL,
-            json={'text': 'Opportunity op111 changed:\nCategory changed to New category'})
+            json={'text': dedent(
+                'Opportunity op111 changed:\n'
+                'Category changed to New category\n'
+                'Url: https://googleapps.insight.ly/opportunities/details/111')})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['CATEGORY_ID'] == 222)
@@ -163,7 +172,8 @@ class NewOpportunitiesTestCase(TestCase):
             Category: New category
             Responsible user: First Last email@test.com
             Close date: 2016-03-31 00:00:00
-            Description: dddddd'''
+            Description: dddddd
+            Url: https://googleapps.insight.ly/opportunities/details/111'''
         insightly_slack_notify.slack_post.assert_called_once_with(
             config.SLACK_CHANNEL_URL, json={'text': dedent(expected_message)})
 

@@ -158,7 +158,8 @@ def notify_new_opportunities():
             Category: {CATEGORY}
             Responsible user: {RESPONSIBLE_USER}
             Close date: {FORECAST_CLOSE_DATE}
-            Description: {OPPORTUNITY_DETAILS}'''\
+            Description: {OPPORTUNITY_DETAILS}
+            Url: https://googleapps.insight.ly/opportunities/details/{OPPORTUNITY_ID}'''\
             .format(**opp)
 
         # Send message to slack.
@@ -236,8 +237,12 @@ def notify_changed_opportunities():
 
         # Send message to slack.
         if message:
-            message = 'Opportunity {OPPORTUNITY_NAME} changed:\n'.format(**opp) + message
-            slack_post(config.SLACK_CHANNEL_URL, json={'text': message.strip()})
+            message = '''\
+                Opportunity {OPPORTUNITY_NAME} changed:
+                {changes}\
+                Url: https://googleapps.insight.ly/opportunities/details/{OPPORTUNITY_ID}'''\
+                .format(changes=message, **opp)
+            slack_post(config.SLACK_CHANNEL_URL, json={'text': dedent(message).strip()})
 
         # Update local opportunity.
         db[opp['LOCAL_ID']] = opp
