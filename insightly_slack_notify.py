@@ -144,8 +144,11 @@ def notify_new_opportunities():
     for opp in new_opportunities:
 
         # Fetch responsible user info.
-        userdata = insightly_get("/users/%s" % opp['RESPONSIBLE_USER_ID'], insightly_auth)
-        opp['RESPONSIBLE_USER'] = "{FIRST_NAME} {LAST_NAME} {EMAIL_ADDRESS}".format(**userdata)
+        if opp['RESPONSIBLE_USER_ID']:
+            userdata = insightly_get("/users/%s" % opp['RESPONSIBLE_USER_ID'], insightly_auth)
+            opp['RESPONSIBLE_USER'] = "{FIRST_NAME} {LAST_NAME} {EMAIL_ADDRESS}".format(**userdata)
+        else:
+            opp['RESPONSIBLE_USER'] = None
 
         # Fetch category info.
         if opp['CATEGORY_ID']:
@@ -228,15 +231,27 @@ def notify_changed_opportunities():
         if 'OPPORTUNITY_STATE' in changed_fields:
             message += 'State changed to %s\n' % opp['OPPORTUNITY_STATE']
         if 'PIPELINE_ID' in changed_fields:
-            pipeline = insightly_get("/Pipelines/%s" % opp['PIPELINE_ID'], insightly_auth)
-            stage = insightly_get("/PipelineStages/%s" % opp['STAGE_ID'], insightly_auth)
-            message += 'Pipeline changed to %s (%s)\n' % (pipeline['PIPELINE_NAME'], stage['STAGE_NAME'])
+            if opp['PIPELINE_ID']:
+                pipeline = insightly_get("/Pipelines/%s" % opp['PIPELINE_ID'], insightly_auth)
+                if opp['STAGE_ID']:
+                    stage = insightly_get("/PipelineStages/%s" % opp['STAGE_ID'], insightly_auth)
+                else:
+                    stage = {'STAGE_NAME': 'No stage'}
+                message += 'Pipeline changed to %s (%s)\n' % (pipeline['PIPELINE_NAME'], stage['STAGE_NAME'])
+            else:
+                message += 'Pipeline changed to None\n'
         elif 'STAGE_ID' in changed_fields:
-            stage = insightly_get("/PipelineStages/%s" % opp['STAGE_ID'], insightly_auth)
-            message += 'Stage changed to %s\n' % stage['STAGE_NAME']
+            if opp['STAGE_ID']:
+                stage = insightly_get("/PipelineStages/%s" % opp['STAGE_ID'], insightly_auth)
+                message += 'Stage changed to %s\n' % stage['STAGE_NAME']
+            else:
+                message += 'Stage changed to None\n'
         elif 'CATEGORY_ID' in changed_fields:
-            category = insightly_get("/OpportunityCategories/%s" % opp['CATEGORY_ID'], insightly_auth)
-            message += 'Category changed to %s\n' % category['CATEGORY_NAME']
+            if opp['CATEGORY_ID']:
+                category = insightly_get("/OpportunityCategories/%s" % opp['CATEGORY_ID'], insightly_auth)
+                message += 'Category changed to %s\n' % category['CATEGORY_NAME']
+            else:
+                message += 'Category changed to None\n'
 
         # Send message to slack.
         if message:
