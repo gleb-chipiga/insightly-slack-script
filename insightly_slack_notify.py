@@ -148,8 +148,11 @@ def notify_new_opportunities():
         opp['RESPONSIBLE_USER'] = "{FIRST_NAME} {LAST_NAME} {EMAIL_ADDRESS}".format(**userdata)
 
         # Fetch category info.
-        category = insightly_get("/OpportunityCategories/%s" % opp['CATEGORY_ID'], insightly_auth)
-        opp['CATEGORY'] = category['CATEGORY_NAME']
+        if opp['CATEGORY_ID']:
+            category = insightly_get("/OpportunityCategories/%s" % opp['CATEGORY_ID'], insightly_auth)
+            opp['CATEGORY'] = category['CATEGORY_NAME']
+        else:
+            opp['CATEGORY'] = None
 
         # The message template to send to slack.
         message = '''\

@@ -10,41 +10,43 @@ import insightly_slack_notify
 import insightly_slack_notify_config as config
 
 
+OPPORTUNITY_TEMPLATE = {
+    "OPPORTUNITY_ID": 111,
+    "OPPORTUNITY_NAME": "op111",
+    "OPPORTUNITY_DETAILS": "dddddd",
+    "PROBABILITY": 1,
+    "BID_CURRENCY": "USD",
+    "BID_AMOUNT": 1,
+    "BID_TYPE": "Fixed Bid",
+    "BID_DURATION": None,
+    "FORECAST_CLOSE_DATE": "2016-03-31 00:00:00",
+    "ACTUAL_CLOSE_DATE": None,
+    "CATEGORY_ID": 111,
+    "PIPELINE_ID": 111,
+    "STAGE_ID": 111,
+    "OPPORTUNITY_STATE": "OPEN",
+    "IMAGE_URL": "http://s3.amazonaws.com/insightly.userfiles/643478/",
+    "RESPONSIBLE_USER_ID": 111,
+    "OWNER_USER_ID": 111,
+    "DATE_CREATED_UTC": "2016-03-28 13:11:50",
+    "DATE_UPDATED_UTC": "2016-03-29 12:03:56",
+    "VISIBLE_TO": "EVERYONE",
+    "VISIBLE_TEAM_ID": None,
+    "VISIBLE_USER_IDS": None,
+    "CUSTOMFIELDS": [],
+    "TAGS": [],
+    "LINKS": [],
+    "EMAILLINKS": []}
+
+
 class ChangedOpportunitiesTestCase(TestCase):
 
     def setUp(self):
-        local_opportunity = {
-            "OPPORTUNITY_ID": 111,
-            "OPPORTUNITY_NAME": "op111",
-            "OPPORTUNITY_DETAILS": "dddddd",
-            "PROBABILITY": 1,
-            "BID_CURRENCY": "USD",
-            "BID_AMOUNT": 1,
-            "BID_TYPE": "Fixed Bid",
-            "BID_DURATION": None,
-            "FORECAST_CLOSE_DATE": "2016-03-31 00:00:00",
-            "ACTUAL_CLOSE_DATE": None,
-            "CATEGORY_ID": 111,
-            "PIPELINE_ID": 111,
-            "STAGE_ID": 111,
-            "OPPORTUNITY_STATE": "OPEN",
-            "IMAGE_URL": "http://s3.amazonaws.com/insightly.userfiles/643478/",
-            "RESPONSIBLE_USER_ID": 111,
-            "OWNER_USER_ID": 111,
-            "DATE_CREATED_UTC": "2016-03-28 13:11:50",
-            "DATE_UPDATED_UTC": "2016-03-29 12:03:56",
-            "VISIBLE_TO": "EVERYONE",
-            "VISIBLE_TEAM_ID": None,
-            "VISIBLE_USER_IDS": None,
-            "CUSTOMFIELDS": [],
-            "TAGS": [],
-            "LINKS": [],
-            "EMAILLINKS": []}
-
-        self.local_db = {'opportunity_111': local_opportunity}
+        # GIVEN local database with one opportunity
+        self.local_db = {'opportunity_111': OPPORTUNITY_TEMPLATE}
+        patch('insightly_slack_notify.shelve.open', lambda x: self.local_db).start()
 
         patch('insightly_slack_notify.slack_post', Mock()).start()
-        patch('insightly_slack_notify.shelve.open', lambda x: self.local_db).start()
 
     def tearDown(self):
         patch.stopall()
@@ -119,33 +121,6 @@ class ChangedOpportunitiesTestCase(TestCase):
 
 class NewOpportunitiesTestCase(TestCase):
     def setUp(self):
-        self.new_opportunity = {
-            "OPPORTUNITY_ID": 111,
-            "OPPORTUNITY_NAME": "op111",
-            "OPPORTUNITY_DETAILS": "dddddd",
-            "PROBABILITY": 1,
-            "BID_CURRENCY": "USD",
-            "BID_AMOUNT": 1,
-            "BID_TYPE": "Fixed Bid",
-            "BID_DURATION": None,
-            "FORECAST_CLOSE_DATE": "2016-03-31 00:00:00",
-            "ACTUAL_CLOSE_DATE": None,
-            "CATEGORY_ID": 111,
-            "PIPELINE_ID": 111,
-            "STAGE_ID": 111,
-            "OPPORTUNITY_STATE": "OPEN",
-            "IMAGE_URL": "http://s3.amazonaws.com/insightly.userfiles/643478/",
-            "RESPONSIBLE_USER_ID": 111,
-            "OWNER_USER_ID": 111,
-            "DATE_CREATED_UTC": "2016-03-28 13:11:50",
-            "DATE_UPDATED_UTC": "2016-03-29 12:03:56",
-            "VISIBLE_TO": "EVERYONE",
-            "VISIBLE_TEAM_ID": None,
-            "VISIBLE_USER_IDS": None,
-            "CUSTOMFIELDS": [],
-            "TAGS": [],
-            "LINKS": [],
-            "EMAILLINKS": []}
         self.local_db = {}
 
         patch('insightly_slack_notify.slack_post', Mock()).start()
@@ -154,9 +129,11 @@ class NewOpportunitiesTestCase(TestCase):
     def tearDown(self):
         patch.stopall()
 
-    def test_new_opportunity(self):
+    def test_new_opportunity_with_category(self):
+        new_opportunity_with_category = dict(OPPORTUNITY_TEMPLATE, CATEGORY_ID=111)
+
         insightly_response_chain = [
-            [self.new_opportunity],
+            [new_opportunity_with_category],
             {'FIRST_NAME': 'First', 'LAST_NAME': 'Last', 'EMAIL_ADDRESS': 'email@test.com'},
             {'CATEGORY_NAME': 'New category'},
         ]
@@ -170,6 +147,30 @@ class NewOpportunitiesTestCase(TestCase):
             New opportunity created: op111
             Value: 1 USD
             Category: New category
+            Responsible user: First Last email@test.com
+            Close date: 2016-03-31 00:00:00
+            Description: dddddd
+            Url: https://googleapps.insight.ly/opportunities/details/111'''
+        insightly_slack_notify.slack_post.assert_called_once_with(
+            config.SLACK_CHANNEL_URL, json={'text': dedent(expected_message)})
+
+    def test_new_opportunity_without_category(self):
+        new_opportunity_without_category = dict(OPPORTUNITY_TEMPLATE, CATEGORY_ID=None)
+
+        insightly_response_chain = [
+            [new_opportunity_without_category],
+            {'FIRST_NAME': 'First', 'LAST_NAME': 'Last', 'EMAIL_ADDRESS': 'email@test.com'},
+        ]
+        patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
+
+        # AND notify_changed_opportunities() is called
+        insightly_slack_notify.notify_new_opportunities()
+
+        # THEN one slack message should be sent
+        expected_message = '''\
+            New opportunity created: op111
+            Value: 1 USD
+            Category: None
             Responsible user: First Last email@test.com
             Close date: 2016-03-31 00:00:00
             Description: dddddd
