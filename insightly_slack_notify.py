@@ -252,6 +252,12 @@ def notify_changed_opportunities():
                 message += 'Category changed to %s\n' % category['CATEGORY_NAME']
             else:
                 message += 'Category changed to None\n'
+        elif 'RESPONSIBLE_USER_ID' in changed_fields:
+            if opp['RESPONSIBLE_USER_ID']:
+                userdata = insightly_get("/users/%s" % opp['RESPONSIBLE_USER_ID'], insightly_auth)
+                message += 'Responsible user changed to {FIRST_NAME} {LAST_NAME} {EMAIL_ADDRESS}\n'.format(**userdata)
+            else:
+                message += 'Responsible user changed to None\n'
 
         # Send message to slack.
         if message:

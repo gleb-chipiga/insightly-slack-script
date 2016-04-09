@@ -207,6 +207,49 @@ class ChangedOpportunitiesTestCase(TestCase):
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['CATEGORY_ID'] is None)
 
+    def test_changed_user(self):
+        # WHEN RESPONSIBLE_USER_ID changed
+        insightly_response_chain = [
+            [dict(self.local_db['opportunity_111'], RESPONSIBLE_USER_ID=333)],
+            {'FIRST_NAME': 'First', 'LAST_NAME': 'Last', 'EMAIL_ADDRESS': 'email@test.com'},
+        ]
+        patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
+
+        # AND notify_changed_opportunities() is called
+        insightly_slack_notify.notify_changed_opportunities()
+
+        # THEN one slack message should be sent
+        insightly_slack_notify.slack_post.assert_called_once_with(
+            config.SLACK_CHANNEL_URL,
+            json={'text': dedent(
+                'Opportunity op111 changed:\n'
+                'Responsible user changed to First Last email@test.com\n'
+                'Url: https://googleapps.insight.ly/opportunities/details/111')})
+
+        # AND local db opportunity should get updated
+        assert(self.local_db['opportunity_111']['RESPONSIBLE_USER_ID'] == 333)
+
+    def test_changed_user_to_none(self):
+        # WHEN RESPONSIBLE_USER_ID changed to None
+        insightly_response_chain = [
+            [dict(self.local_db['opportunity_111'], RESPONSIBLE_USER_ID=None)],
+        ]
+        patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
+
+        # AND notify_changed_opportunities() is called
+        insightly_slack_notify.notify_changed_opportunities()
+
+        # THEN one slack message should be sent
+        insightly_slack_notify.slack_post.assert_called_once_with(
+            config.SLACK_CHANNEL_URL,
+            json={'text': dedent(
+                'Opportunity op111 changed:\n'
+                'Responsible user changed to None\n'
+                'Url: https://googleapps.insight.ly/opportunities/details/111')})
+
+        # AND local db opportunity should get updated
+        assert(self.local_db['opportunity_111']['RESPONSIBLE_USER_ID'] is None)
+
 
 class NewOpportunitiesTestCase(TestCase):
     def setUp(self):
