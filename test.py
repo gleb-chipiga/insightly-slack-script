@@ -26,7 +26,7 @@ OPPORTUNITY_TEMPLATE = {
     "STAGE_ID": 111,
     "OPPORTUNITY_STATE": "OPEN",
     "IMAGE_URL": "http://s3.amazonaws.com/insightly.userfiles/643478/",
-    "RESPONSIBLE_USER_ID": 111,
+    "RESPONSIBLE_USER_ID": None,
     "OWNER_USER_ID": 111,
     "DATE_CREATED_UTC": "2016-03-28 13:11:50",
     "DATE_UPDATED_UTC": "2016-03-29 12:03:56",
@@ -67,7 +67,8 @@ class ChangedOpportunitiesTestCase(TestCase):
             json={'text': dedent(
                 'Opportunity op111 changed:\n'
                 'Bid amount changed to 2\n'
-                'Url: https://googleapps.insight.ly/opportunities/details/111')})
+                'Url: https://googleapps.insight.ly/opportunities/details/111\n'
+                'Responsible user: None')})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['BID_AMOUNT'] == 2)
@@ -90,7 +91,8 @@ class ChangedOpportunitiesTestCase(TestCase):
             json={'text': dedent(
                 'Opportunity op111 changed:\n'
                 'Pipeline changed to New pipe (New stage)\n'
-                'Url: https://googleapps.insight.ly/opportunities/details/111')})
+                'Url: https://googleapps.insight.ly/opportunities/details/111\n'
+                'Responsible user: None')})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['PIPELINE_ID'] == 222)
@@ -112,7 +114,8 @@ class ChangedOpportunitiesTestCase(TestCase):
             json={'text': dedent(
                 'Opportunity op111 changed:\n'
                 'Pipeline changed to None\n'
-                'Url: https://googleapps.insight.ly/opportunities/details/111')})
+                'Url: https://googleapps.insight.ly/opportunities/details/111\n'
+                'Responsible user: None')})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['PIPELINE_ID'] is None)
@@ -135,7 +138,8 @@ class ChangedOpportunitiesTestCase(TestCase):
             json={'text': dedent(
                 'Opportunity op111 changed:\n'
                 'Pipeline changed to New pipe (No stage)\n'
-                'Url: https://googleapps.insight.ly/opportunities/details/111')})
+                'Url: https://googleapps.insight.ly/opportunities/details/111\n'
+                'Responsible user: None')})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['PIPELINE_ID'] == 222)
@@ -158,7 +162,8 @@ class ChangedOpportunitiesTestCase(TestCase):
             json={'text': dedent(
                 'Opportunity op111 changed:\n'
                 'Stage changed to None\n'
-                'Url: https://googleapps.insight.ly/opportunities/details/111')})
+                'Url: https://googleapps.insight.ly/opportunities/details/111\n'
+                'Responsible user: None')})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['PIPELINE_ID'] == 111)
@@ -181,7 +186,8 @@ class ChangedOpportunitiesTestCase(TestCase):
             json={'text': dedent(
                 'Opportunity op111 changed:\n'
                 'Category changed to New category\n'
-                'Url: https://googleapps.insight.ly/opportunities/details/111')})
+                'Url: https://googleapps.insight.ly/opportunities/details/111\n'
+                'Responsible user: None')})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['CATEGORY_ID'] == 222)
@@ -202,7 +208,8 @@ class ChangedOpportunitiesTestCase(TestCase):
             json={'text': dedent(
                 'Opportunity op111 changed:\n'
                 'Category changed to None\n'
-                'Url: https://googleapps.insight.ly/opportunities/details/111')})
+                'Url: https://googleapps.insight.ly/opportunities/details/111\n'
+                'Responsible user: None')})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['CATEGORY_ID'] is None)
@@ -223,13 +230,16 @@ class ChangedOpportunitiesTestCase(TestCase):
             config.SLACK_CHANNEL_URL,
             json={'text': dedent(
                 'Opportunity op111 changed:\n'
-                'Responsible user changed to First Last email@test.com\n'
-                'Url: https://googleapps.insight.ly/opportunities/details/111')})
+                'Responsible user changed\n'
+                'Url: https://googleapps.insight.ly/opportunities/details/111\n'
+                'Responsible user: First Last email@test.com')})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['RESPONSIBLE_USER_ID'] == 333)
 
     def test_changed_user_to_none(self):
+        # GIVEN local opportunity with non-empty responsible user
+        self.local_db['opportunity_111']['RESPONSIBLE_USER_ID'] = 111
         # WHEN RESPONSIBLE_USER_ID changed to None
         insightly_response_chain = [
             [dict(self.local_db['opportunity_111'], RESPONSIBLE_USER_ID=None)],
@@ -244,8 +254,9 @@ class ChangedOpportunitiesTestCase(TestCase):
             config.SLACK_CHANNEL_URL,
             json={'text': dedent(
                 'Opportunity op111 changed:\n'
-                'Responsible user changed to None\n'
-                'Url: https://googleapps.insight.ly/opportunities/details/111')})
+                'Responsible user changed\n'
+                'Url: https://googleapps.insight.ly/opportunities/details/111\n'
+                'Responsible user: None')})
 
         # AND local db opportunity should get updated
         assert(self.local_db['opportunity_111']['RESPONSIBLE_USER_ID'] is None)

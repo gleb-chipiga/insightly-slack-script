@@ -218,6 +218,13 @@ def notify_changed_opportunities():
     for opp in changed_opportunities:
         local_opp = db[opp['LOCAL_ID']]
 
+        # Fetch responsible user info.
+        if opp['RESPONSIBLE_USER_ID']:
+            userdata = insightly_get("/users/%s" % opp['RESPONSIBLE_USER_ID'], insightly_auth)
+            opp['RESPONSIBLE_USER'] = "{FIRST_NAME} {LAST_NAME} {EMAIL_ADDRESS}".format(**userdata)
+        else:
+            opp['RESPONSIBLE_USER'] = None
+
         # Make list of changed fields.
         changed_fields = [x for x in opp if opp.get(x) != local_opp.get(x)]
 
@@ -253,18 +260,15 @@ def notify_changed_opportunities():
             else:
                 message += 'Category changed to None\n'
         elif 'RESPONSIBLE_USER_ID' in changed_fields:
-            if opp['RESPONSIBLE_USER_ID']:
-                userdata = insightly_get("/users/%s" % opp['RESPONSIBLE_USER_ID'], insightly_auth)
-                message += 'Responsible user changed to {FIRST_NAME} {LAST_NAME} {EMAIL_ADDRESS}\n'.format(**userdata)
-            else:
-                message += 'Responsible user changed to None\n'
+            message += 'Responsible user changed\n'
 
         # Send message to slack.
         if message:
             message = '''\
                 Opportunity {OPPORTUNITY_NAME} changed:
                 {changes}\
-                Url: https://googleapps.insight.ly/opportunities/details/{OPPORTUNITY_ID}'''\
+                Url: https://googleapps.insight.ly/opportunities/details/{OPPORTUNITY_ID}
+                Responsible user: {RESPONSIBLE_USER}'''\
                 .format(changes=message, **opp)
             slack_post(config.SLACK_CHANNEL_URL, json={'text': dedent(message).strip()})
 
