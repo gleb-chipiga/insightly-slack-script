@@ -11,6 +11,7 @@ import re
 import shelve
 
 from datetime import datetime
+from collections import defaultdict
 from copy import copy
 from os.path import abspath, dirname, exists, join
 from shutil import copyfile
@@ -191,6 +192,15 @@ def notify_changed_opportunities():
     url = "/opportunities?$filter=DATE_UPDATED_UTC%20gt%20DateTime'{from_date}'".format(from_date=last_poll)
     changed_opportunities = insightly_get(url, insightly_auth)
 
+    url = "/notes?$filter=DATE_CREATED_UTC%20gt%20DateTime'{from_date}'".format(from_date=last_poll)
+    new_notes = insightly_get(url, insightly_auth)
+    opportunities_with_new_notes = defaultdict(list)
+
+    for note in new_notes:
+        for link in note['NOTELINKS']:
+            if link.get('OPPORTUNITY_ID'):
+                opportunities_with_new_notes[link.get('OPPORTUNITY_ID')].append(note)
+
     db['changed_opportunities_last_poll_time'] = now
 
     for opp in copy(changed_opportunities):
@@ -208,7 +218,7 @@ def notify_changed_opportunities():
             # Make list of changed fields.
             changed_fields = [x for x in opp if opp.get(x) != local_opp.get(x)]
 
-            if not changed_fields:
+            if not changed_fields and opp['OPPORTUNITY_ID'] not in opportunities_with_new_notes:
                 # This opportunity is not really changed. Insightly seems to cache the response list and
                 # we can get false positives. Remove this opportunity from changed list.
                 changed_opportunities.remove(opp)
@@ -261,6 +271,10 @@ def notify_changed_opportunities():
                 message += 'Category changed to None\n'
         elif 'RESPONSIBLE_USER_ID' in changed_fields:
             message += 'Responsible user changed\n'
+
+        if opp['OPPORTUNITY_ID'] in opportunities_with_new_notes:
+            for note in opportunities_with_new_notes.get(opp['OPPORTUNITY_ID']):
+                message += 'New note added: %s\n' % note['TITLE']
 
         # Send message to slack.
         if message:

@@ -10,6 +10,29 @@ import insightly_slack_notify
 import insightly_slack_notify_config as config
 
 
+NOTE_TEMPLATE = {
+    u'BODY': u'\r\n<p>body</p>\r\n',
+    u'DATE_CREATED_UTC': u'2016-03-31 17:09:54',
+    u'DATE_UPDATED_UTC': u'2016-03-31 17:09:54',
+    u'FILE_ATTACHMENTS': [],
+    u'LINK_SUBJECT_ID': 10719115,
+    u'LINK_SUBJECT_TYPE': u'Opportunity',
+    u'NOTELINKS': [{u'CONTACT_ID': None,
+                    u'LEAD_ID': None,
+                    u'NOTE_ID': 40747470,
+                    u'NOTE_LINK_ID': 43412074,
+                    u'OPPORTUNITY_ID': 111,
+                    u'ORGANISATION_ID': None,
+                    u'PROJECT_ID': None}],
+    u'NOTE_ID': 40747470,
+    u'OWNER_USER_ID': 1093279,
+    u'TITLE': u'lol2',
+    u'VISIBLE_TEAM_ID': None,
+    u'VISIBLE_TO': u'EVERYONE',
+    u'VISIBLE_USER_IDS': None
+}
+
+
 OPPORTUNITY_TEMPLATE = {
     "OPPORTUNITY_ID": 111,
     "OPPORTUNITY_NAME": "op111",
@@ -51,10 +74,31 @@ class ChangedOpportunitiesTestCase(TestCase):
     def tearDown(self):
         patch.stopall()
 
+    def test_added_note(self):
+        # WHEN new note was added on the server.
+        insightly_response_chain = [
+            [self.local_db['opportunity_111']],  # opportunity not changed
+            [NOTE_TEMPLATE],
+        ]
+        patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
+
+        # AND notify_changed_opportunities() is called
+        insightly_slack_notify.notify_changed_opportunities()
+
+        # THEN one slack message should be sent
+        insightly_slack_notify.slack_post.assert_called_once_with(
+            config.SLACK_CHANNEL_URL,
+            json={'text': dedent(
+                'Opportunity op111 changed:\n'
+                'New note added: lol2\n'
+                'Url: https://googleapps.insight.ly/opportunities/details/111\n'
+                'Responsible user: None')})
+
     def test_changed_bid_amount(self):
         # WHEN BID_AMOUNT changed
         insightly_response_chain = [
             [dict(self.local_db['opportunity_111'], BID_AMOUNT=2)],
+            [],  # No new notes
         ]
         patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
 
@@ -77,6 +121,7 @@ class ChangedOpportunitiesTestCase(TestCase):
         # WHEN PIPELINE_ID and STAGE_ID changed
         insightly_response_chain = [
             [dict(self.local_db['opportunity_111'], PIPELINE_ID=222, STAGE_ID=222)],
+            [],  # No new notes
             {'PIPELINE_NAME': 'New pipe'},
             {'STAGE_NAME': 'New stage'}
         ]
@@ -102,6 +147,7 @@ class ChangedOpportunitiesTestCase(TestCase):
         # WHEN PIPELINE_ID changed to None
         insightly_response_chain = [
             [dict(self.local_db['opportunity_111'], PIPELINE_ID=None, STAGE_ID=None)],
+            [],  # No new notes
         ]
         patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
 
@@ -125,6 +171,7 @@ class ChangedOpportunitiesTestCase(TestCase):
         # WHEN PIPELINE_ID changed and STAGE_ID changed to None
         insightly_response_chain = [
             [dict(self.local_db['opportunity_111'], PIPELINE_ID=222, STAGE_ID=None)],
+            [],  # No new notes
             {'PIPELINE_NAME': 'New pipe'},
         ]
         patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
@@ -149,6 +196,7 @@ class ChangedOpportunitiesTestCase(TestCase):
         # WHEN STAGE_ID changed to None
         insightly_response_chain = [
             [dict(self.local_db['opportunity_111'], STAGE_ID=None)],
+            [],  # No new notes
             {'PIPELINE_NAME': 'New pipe'},
         ]
         patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
@@ -173,6 +221,7 @@ class ChangedOpportunitiesTestCase(TestCase):
         # WHEN CATEGORY_ID changed
         insightly_response_chain = [
             [dict(self.local_db['opportunity_111'], CATEGORY_ID=222)],
+            [],  # No new notes
             {'CATEGORY_NAME': 'New category'},
         ]
         patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
@@ -196,6 +245,7 @@ class ChangedOpportunitiesTestCase(TestCase):
         # WHEN CATEGORY_ID changed to None
         insightly_response_chain = [
             [dict(self.local_db['opportunity_111'], CATEGORY_ID=None)],
+            [],  # No new notes
         ]
         patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
 
@@ -218,6 +268,7 @@ class ChangedOpportunitiesTestCase(TestCase):
         # WHEN RESPONSIBLE_USER_ID changed
         insightly_response_chain = [
             [dict(self.local_db['opportunity_111'], RESPONSIBLE_USER_ID=333)],
+            [],  # No new notes
             {'FIRST_NAME': 'First', 'LAST_NAME': 'Last', 'EMAIL_ADDRESS': 'email@test.com'},
         ]
         patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
@@ -243,6 +294,7 @@ class ChangedOpportunitiesTestCase(TestCase):
         # WHEN RESPONSIBLE_USER_ID changed to None
         insightly_response_chain = [
             [dict(self.local_db['opportunity_111'], RESPONSIBLE_USER_ID=None)],
+            [],  # No new notes
         ]
         patch('insightly_slack_notify.insightly_get', Mock(side_effect=insightly_response_chain)).start()
 
