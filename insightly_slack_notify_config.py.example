@@ -1,8 +1,9 @@
 # INSIGHTLY_API_KEY can be obtained on user settings page.
 INSIGHTLY_API_KEY = ''
 
-# SLACK_CHANNEL_URL can be obtained on the webhook config page: https://my.slack.com/services/new/incoming-webhook/
-# Format is 'https://hooks.slack.com/services/xxxxxxxx/xxxxxxxx/xxxxxxxxxxxxxxxxxxxx'
+# SLACK_CHANNEL_URL can be obtained on the webhook config page:
+# https://my.slack.com/services/new/incoming-webhook/
+# Format is 'https://hooks.slack.com/services/xxxxx/xxxxx/xxxxx'
 SLACK_CHANNEL_URL = ''
 
 
